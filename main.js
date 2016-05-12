@@ -47,52 +47,68 @@ function main() {
 
 	gl = initGL(canvas);
 	
-	
 	gl.clearColor(0.2, 0.2, 0.2, 1.0);
 	gl.enable(gl.DEPTH_TEST);
 	gl.depthFunc(gl.LEQUAL);
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+	if(gl.getExtension('OES_texture_float') == null) {
+		console.error('no support for "OES_texture_float" found');
+	}
+
 	// shaders
-	var shaders = [
-		new Shader(gl.VERTEX_SHADER, files['shader.vert'], 'shader.vert'),
-		new Shader(gl.FRAGMENT_SHADER, files['shader.frag'], 'shader.frag')
-	];
-	var prog = new Program(shaders);
+	var shaders = {};
+	for(var name in files) {
+		var ext = /.(\w+)$/.exec(name)[1];
+		var type = null;
+		if(ext == 'vert') {
+			type = gl.VERTEX_SHADER;
+		} else if(ext == 'frag') {
+			type = gl.FRAGMENT_SHADER;
+		}
+		if(type != null) {
+			shaders[name] = new Shader(type, files[name], name);
+			console.log(name);
+		}
+	}
+
+	console.log(shaders);
+	var prog = new Program([shaders['shader.vert'], shaders['shader.frag']]);
 
 	// buffers
-	var pos = new Buffer(gl.FLOAT);
-	var texpos = new Buffer(gl.FLOAT);
-	var texposflip = new Buffer(gl.FLOAT);
-	pos.buffer([
+	var pos = new Buffer();
+	var texpos = new Buffer();
+	var texposflip = new Buffer();
+	pos.buffer(new Float32Array([
 		1, 1,
 		-1, 1,
 		1, -1,
 		-1, -1
-	]);
-	texpos.buffer([
+	]));
+	texpos.buffer(new Float32Array([
 		1, 1,
 		0, 1,
 		1, 0,
 		0, 0
-	]);
-	texposflip.buffer([
+	]));
+	texposflip.buffer(new Float32Array([
 		1, 0,
 		0, 0,
 		1, 1,
 		0, 1
-	]);
+	]));
+	
 	prog.attribs['apos'].data = pos;
 	prog.attribs['atexpos'].data = texpos;
 
 	// texture
-	var tex = new Texture(gl.RGBA);
-	tex.load(files['128.png']);
+	var tex = new Texture();
+	tex.image(files['128.png']);
 	prog.uniforms['utex'].data = tex;
 
 	// framebuffer
-	var fb = new Framebuffer(gl.RGBA);
-	fb.empty(512, 512);
+	var fb = new Framebuffer();
+	fb.empty(gl.FLOAT, 512, 512);
 
 	// draw
 	prog.uniforms['utex'].data = tex;
